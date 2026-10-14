@@ -1,0 +1,2199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mancing Budaya Nusantara - Game Edukasi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            box-sizing: border-box;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #082f49;
+            font-family: 'Nunito', sans-serif;
+            touch-action: none;
+        }
+        .font-title {
+            font-family: 'Fredoka', sans-serif;
+        }
+        .text-outline {
+            text-shadow: 
+                -2px -2px 0 #1e293b,  
+                 2px -2px 0 #1e293b,
+                -2px  2px 0 #1e293b,
+                 2px  2px 0 #1e293b,
+                 0px  3px 5px rgba(0,0,0,0.5);
+        }
+        .text-outline-sm {
+            text-shadow: 
+                -1.5px -1.5px 0 #0f172a,  
+                 1.5px -1.5px 0 #0f172a,
+                -1.5px  1.5px 0 #0f172a,
+                 1.5px  1.5px 0 #0f172a;
+        }
+        /* D-Pad Transparent Styling */
+        .dpad-btn {
+            background: rgba(255, 255, 255, 0.22);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 2.5px solid rgba(255, 255, 255, 0.55);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), inset 0 2px 4px rgba(255,255,255,0.4);
+            transition: transform 0.08s ease, background-color 0.08s ease, border-color 0.08s ease;
+        }
+        .dpad-btn:active, .dpad-btn.active-press {
+            background: rgba(250, 204, 21, 0.55);
+            border-color: #fef08a;
+            transform: scale(0.92);
+        }
+        .dpad-btn-p2:active, .dpad-btn-p2.active-press {
+            background: rgba(56, 189, 248, 0.55);
+            border-color: #bae6fd;
+            transform: scale(0.92);
+        }
+        /* Custom Animations */
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+        }
+        .animate-float {
+            animation: floatSlow 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden select-none">
+
+    <!-- MAIN GAME CANVAS -->
+    <canvas id="gameCanvas" class="block w-full h-full"></canvas>
+
+    <!-- TOP HUD (LEVEL, SCORE, CONTROLS - WITHOUT HEARTS) -->
+    <div id="hudOverlay" class="hidden absolute top-0 left-0 w-full pointer-events-none z-20 px-3 pt-2 flex flex-col gap-1.5">
+        <div class="flex justify-between items-center w-full">
+            
+            <!-- Left: Level & Player 1 Status -->
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3 bg-slate-900/50 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-white/30 shadow-lg pointer-events-auto">
+                <div class="flex items-center gap-1.5">
+                    <span class="bg-amber-400 text-slate-900 font-title font-bold text-xs sm:text-sm px-2.5 py-0.5 rounded-lg shadow">LVL <span id="hudLevel">1</span></span>
+                    <span id="hudQuestionCounter" class="text-white/95 font-bold text-xs sm:text-sm bg-white/15 px-2.5 py-0.5 rounded-lg">Soal 1/25</span>
+                </div>
+                <div class="h-4 w-[1.5px] bg-white/30 hidden sm:block"></div>
+                <!-- P1 Score Info (No Hearts) -->
+                <div class="flex items-center gap-2">
+                    <span class="text-amber-300 font-title font-bold text-sm sm:text-base tracking-wide text-outline-sm">🦊 P1</span>
+                    <span class="bg-amber-500/25 border border-amber-400/50 px-2.5 py-0.5 rounded-xl text-white font-title font-bold text-sm sm:text-lg text-outline-sm">
+                        SKOR: <span id="p1Score" class="text-yellow-300 transition-transform inline-block">0</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Center/Right: Player 2 Status (Shown in 2P mode) & Action Buttons -->
+            <div class="flex items-center gap-2 pointer-events-auto">
+                <div id="p2HudBox" class="hidden items-center gap-2 bg-slate-900/50 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-cyan-300/40 shadow-lg">
+                    <span class="text-cyan-300 font-title font-bold text-sm sm:text-base tracking-wide text-outline-sm">🐱 P2</span>
+                    <span class="bg-sky-500/25 border border-sky-400/50 px-2.5 py-0.5 rounded-xl text-white font-title font-bold text-sm sm:text-lg text-outline-sm">
+                        SKOR: <span id="p2Score" class="text-cyan-200 transition-transform inline-block">0</span>
+                    </span>
+                </div>
+
+                <!-- Sound, Fullscreen & Menu Buttons -->
+                <button id="btnToggleSound" title="Suara" class="bg-white/25 hover:bg-white/40 active:scale-95 backdrop-blur-md text-white p-2 rounded-xl border border-white/40 shadow-md transition">
+                    <span id="soundIcon" class="text-base sm:text-lg leading-none">🔊</span>
+                </button>
+                <button id="btnToggleFullscreen" title="Layar Penuh (Fullscreen)" class="bg-white/25 hover:bg-white/40 active:scale-95 backdrop-blur-md text-white p-2 rounded-xl border border-white/40 shadow-md transition flex items-center justify-center">
+                    <svg id="iconFsExpand" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                    </svg>
+                    <svg id="iconFsCompress" class="w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/>
+                    </svg>
+                </button>
+                <button id="btnBackMenu" title="Menu Utama" class="bg-rose-500/85 hover:bg-rose-600 active:scale-95 backdrop-blur-md text-white font-title font-bold text-xs sm:text-sm px-3 py-2 rounded-xl border border-white/40 shadow-md transition">
+                    MENU
+                </button>
+            </div>
+        </div>
+
+        <!-- QUESTION BANNER (Bottom or Top Compact Card) -->
+        <div class="w-full max-w-4xl mx-auto pointer-events-auto">
+            <div class="bg-white/90 backdrop-blur-md rounded-2xl border-2 border-amber-400 shadow-xl px-3 py-2 sm:px-5 sm:py-2.5 transition-all">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <div class="flex items-center gap-2.5">
+                        <span id="qCategoryBadge" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm shrink-0">
+                            Alat Musik
+                        </span>
+                        <span class="text-slate-700 font-extrabold text-xs sm:text-base leading-snug" id="qText">
+                            Alat musik tradisional dari Jawa Barat yang terbuat dari bambu dan dimainkan dengan cara digoyangkan adalah...
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ON-SCREEN TRANSPARENT D-PAD CONTROLS -->
+    <div id="dpadContainer" class="hidden absolute bottom-3 left-0 w-full px-3 sm:px-6 pointer-events-none z-20 flex justify-between items-end">
+        
+        <!-- PLAYER 1 D-PAD (Left Side) -->
+        <div class="flex flex-col items-center gap-1.5 pointer-events-auto">
+            <div id="p1ControlLabel" class="bg-amber-500/70 backdrop-blur-sm text-white text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full border border-white/50 shadow">
+                Kontrol P1 (A / S / D)
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Left Button -->
+                <button id="btnP1Left" class="dpad-btn w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex flex-col items-center justify-center text-white active:scale-90" aria-label="P1 Kiri">
+                    <svg class="w-7 h-7 sm:w-8 sm:h-8 drop-shadow" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+                    <span class="text-[9px] font-bold tracking-wider opacity-90 -mt-1">KIRI</span>
+                </button>
+                <!-- Down (Drop Hook) Button -->
+                <button id="btnP1Down" class="dpad-btn w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex flex-col items-center justify-center text-amber-200 border-amber-300/80 active:scale-90" aria-label="P1 Pancing">
+                    <svg class="w-8 h-8 sm:w-10 sm:h-10 drop-shadow" fill="currentColor" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                    <span class="text-[10px] font-black tracking-wider text-white -mt-1">PANCING</span>
+                </button>
+                <!-- Right Button -->
+                <button id="btnP1Right" class="dpad-btn w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex flex-col items-center justify-center text-white active:scale-90" aria-label="P1 Kanan">
+                    <svg class="w-7 h-7 sm:w-8 sm:h-8 drop-shadow" fill="currentColor" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                    <span class="text-[9px] font-bold tracking-wider opacity-90 -mt-1">KANAN</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- PLAYER 2 D-PAD (Right Side - Shown in 2P Mode, or Mirror P1 in 1P Mode if desired) -->
+        <div id="p2DpadWrapper" class="hidden flex-col items-center gap-1.5 pointer-events-auto">
+            <div class="bg-sky-500/70 backdrop-blur-sm text-white text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full border border-white/50 shadow">
+                Kontrol P2 (◀ / ▼ / ▶)
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Left Button -->
+                <button id="btnP2Left" class="dpad-btn dpad-btn-p2 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex flex-col items-center justify-center text-white active:scale-90" aria-label="P2 Kiri">
+                    <svg class="w-7 h-7 sm:w-8 sm:h-8 drop-shadow" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+                    <span class="text-[9px] font-bold tracking-wider opacity-90 -mt-1">KIRI</span>
+                </button>
+                <!-- Down (Drop Hook) Button -->
+                <button id="btnP2Down" class="dpad-btn dpad-btn-p2 w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex flex-col items-center justify-center text-cyan-200 border-cyan-300/80 active:scale-90" aria-label="P2 Pancing">
+                    <svg class="w-8 h-8 sm:w-10 sm:h-10 drop-shadow" fill="currentColor" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                    <span class="text-[10px] font-black tracking-wider text-white -mt-1">PANCING</span>
+                </button>
+                <!-- Right Button -->
+                <button id="btnP2Right" class="dpad-btn dpad-btn-p2 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex flex-col items-center justify-center text-white active:scale-90" aria-label="P2 Kanan">
+                    <svg class="w-7 h-7 sm:w-8 sm:h-8 drop-shadow" fill="currentColor" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                    <span class="text-[9px] font-bold tracking-wider opacity-90 -mt-1">KANAN</span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- START / MAIN MENU MODAL -->
+    <div id="menuModal" class="absolute inset-0 z-30 flex items-center justify-center p-4 bg-slate-900/45 backdrop-blur-sm">
+        <div class="bg-gradient-to-b from-sky-50 to-white border-4 border-amber-400 rounded-3xl shadow-2xl max-w-lg w-full p-5 sm:p-7 text-center relative overflow-hidden animate-float">
+            <!-- Top Right Fullscreen Button inside Menu Modal -->
+            <button id="btnMenuFullscreen" title="Layar Penuh (Fullscreen)" class="absolute top-3.5 right-3.5 bg-sky-100 hover:bg-sky-200 active:scale-95 text-sky-800 p-2 rounded-xl border border-sky-300 shadow-sm transition flex items-center gap-1 text-xs font-bold">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                </svg>
+                <span id="menuFsText" class="hidden sm:inline">Fullscreen</span>
+            </button>
+
+            <!-- Decorative Ribbon -->
+            <div class="inline-block bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white font-title font-bold text-xs sm:text-sm px-4 py-1 rounded-full shadow-md mb-2 uppercase tracking-wider">
+                🎣 Game Edukasi Nusantara 🇮🇩
+            </div>
+            <h1 class="font-title font-bold text-3xl sm:text-4xl text-sky-900 tracking-tight mb-1">
+                MANCING BUDAYA
+            </h1>
+            <p class="text-slate-600 text-xs sm:text-sm font-semibold mb-4">
+                Tangkap ikan yang membawa jawaban tepat tentang <span class="text-amber-600 font-bold">Musik, Adat, Makanan, Senjata, & Rumah Adat</span> Indonesia!
+            </p>
+
+            <!-- Question Count Selection (All Mixed Categories) -->
+            <div class="mb-4 text-left bg-sky-100/80 p-3 rounded-2xl border border-sky-200">
+                <label for="selectQuestionCount" class="block text-xs font-extrabold text-sky-900 uppercase tracking-wider mb-1.5">🔢 Pilih Jumlah Soal (Campuran Budaya):</label>
+                <select id="selectQuestionCount" class="w-full bg-white border-2 border-sky-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:border-amber-500 cursor-pointer">
+                    <option value="10">🎯 10 Soal (Cepat - Campuran)</option>
+                    <option value="15" selected>🌟 15 Soal (Sedang - Campuran)</option>
+                    <option value="20">🔥 20 Soal (Tantangan - Campuran)</option>
+                    <option value="25">👑 25 Soal (Semua Soal - Campuran)</option>
+                </select>
+            </div>
+
+            <!-- Mode Buttons (1 Player or 2 Players) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <button id="btnStart1P" class="group bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-500 active:scale-95 text-slate-900 font-title font-bold py-3.5 px-4 rounded-2xl border-b-4 border-amber-700 shadow-lg flex flex-col items-center justify-center transition">
+                    <span class="text-2xl sm:text-3xl mb-0.5">🦊</span>
+                    <span class="text-base sm:text-lg tracking-wide">1 PEMAIN</span>
+                    <span class="text-[11px] font-sans font-bold text-amber-950/80">Petualangan Solo</span>
+                </button>
+
+                <button id="btnStart2P" class="group bg-gradient-to-b from-sky-400 to-sky-600 hover:from-sky-300 hover:to-sky-500 active:scale-95 text-white font-title font-bold py-3.5 px-4 rounded-2xl border-b-4 border-sky-800 shadow-lg flex flex-col items-center justify-center transition">
+                    <span class="text-2xl sm:text-3xl mb-0.5">🦊 vs 🐱</span>
+                    <span class="text-base sm:text-lg tracking-wide">2 PEMAIN</span>
+                    <span class="text-[11px] font-sans font-bold text-sky-100">Lomba Tangkap Cepat!</span>
+                </button>
+            </div>
+
+            <!-- How to Play Instructions -->
+            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-left text-xs text-slate-700 space-y-1">
+                <div class="font-extrabold text-amber-800 flex items-center gap-1">
+                    <span>🎮</span> Cara Bermain & Aturan Skor:
+                </div>
+                <p>• Gunakan tombol <b>D-Pad Transparan (◀ ▼ ▶)</b> di layar atau Keyboard.</p>
+                <p>• <b>◀ Kiri / ▶ Kanan:</b> Menggerakkan kapal. <b>▼ Bawah (Tahan):</b> Menurunkan kail, <b>lepas</b> untuk menarik naik otomatis!</p>
+                <p>• Tangkap ikan jawaban <b>BENAR (+20 Poin)</b>. Hati-hati, jawaban <b>SALAH mengurangi skor (-10 Poin)</b>!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME OVER / VICTORY MODAL -->
+    <div id="gameOverModal" class="hidden absolute inset-0 z-30 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div class="bg-white border-4 border-amber-400 rounded-3xl shadow-2xl max-w-md w-full p-6 text-center relative animate-float">
+            <div id="endEmoji" class="text-5xl mb-2">🏆</div>
+            <h2 id="endTitle" class="font-title font-bold text-2xl sm:text-3xl text-slate-800 mb-1">PERMAINAN SELESAI!</h2>
+            <p id="endSubtitle" class="text-sm font-bold text-amber-600 mb-4">Hebat! Kamu telah belajar Budaya Nusantara!</p>
+
+            <!-- Score Summary Box -->
+            <div id="endScoreSummary" class="bg-slate-100 rounded-2xl p-4 mb-5 space-y-2 border border-slate-200">
+                <!-- Dynamically filled -->
+            </div>
+
+            <div class="flex gap-3">
+                <button id="btnPlayAgain" class="flex-1 bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-300 hover:to-emerald-500 active:scale-95 text-white font-title font-bold py-3 px-4 rounded-2xl border-b-4 border-emerald-800 shadow-lg transition">
+                    🔄 MAIN LAGI
+                </button>
+                <button id="btnToMenu" class="flex-1 bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-500 active:scale-95 text-slate-900 font-title font-bold py-3 px-4 rounded-2xl border-b-4 border-amber-700 shadow-lg transition">
+                    🏠 MENU UTAMA
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**************************************************************
+         * 1. BANK SOAL KEANEKARAGAMAN BUDAYA NUSANTARA (25 SOAL)
+         **************************************************************/
+        const QUESTION_BANK = [
+            // A. ALAT MUSIK TRADISIONAL
+            {
+                category: "Alat Musik",
+                question: "Alat musik tradisional dari Jawa Barat yang terbuat dari bambu dan dimainkan dengan cara digoyangkan adalah...",
+                options: ["Angklung", "Sasando", "Kolintang", "Gamelan"],
+                correct: 0
+            },
+            {
+                category: "Alat Musik",
+                question: "Alat musik petik khas Pulau Rote, Nusa Tenggara Timur (NTT) yang memiliki resonansi dari daun lontar disebut...",
+                options: ["Tifa", "Sasando", "Sampe", "Kecapi"],
+                correct: 1
+            },
+            {
+                category: "Alat Musik",
+                question: "Alat musik pukul khas Papua dan Maluku yang bentuknya menyerupai kendang dan terbuat dari kayu berlubang adalah...",
+                options: ["Rebab", "Saluang", "Tifa", "Talempong"],
+                correct: 2
+            },
+            {
+                category: "Alat Musik",
+                question: "Alat musik pukul dari kayu ringan yang berasal dari Minahasa, Sulawesi Utara adalah...",
+                options: ["Tehyan", "Kolintang", "Bonang", "Serunai"],
+                correct: 1
+            },
+            {
+                category: "Alat Musik",
+                question: "Alat musik tiup tradisional khas masyarakat Minangkabau, Sumatera Barat yang terbuat dari bambu tipis adalah...",
+                options: ["Saluang", "Suling Lembang", "Fu", "Triton"],
+                correct: 0
+            },
+
+            // B. UPACARA & ADAT ISTIADAT
+            {
+                category: "Upacara & Adat",
+                question: "Upacara pembakaran jenazah umat Hindu di Bali yang bertujuan menyucikan roh leluhur disebut...",
+                options: ["Kasada", "Sekaten", "Ngaben", "Rambu Solo"],
+                correct: 2
+            },
+            {
+                category: "Upacara & Adat",
+                question: "Tradisi melompati tumpukan batu setinggi 2 meter (Fahombo) sebagai simbol kedewasaan berasal dari pulau...",
+                options: ["Pulau Mentawai", "Pulau Nias", "Pulau Sumba", "Pulau Flores"],
+                correct: 1
+            },
+            {
+                category: "Upacara & Adat",
+                question: "Upacara adat pemakaman masyarakat Toraja di Sulawesi Selatan yang berlangsung meriah selama berhari-hari adalah...",
+                options: ["Rambu Solo", "Seren Taun", "Tabuik", "Peusijuek"],
+                correct: 0
+            },
+            {
+                category: "Upacara & Adat",
+                question: "Upacara adat Suku Tengger di Jawa Timur dengan mempersembahkan hasil bumi ke kawah Gunung Bromo disebut...",
+                options: ["Tedak Siten", "Dugderan", "Yadnya Kasada", "Grebeg Maulud"],
+                correct: 2
+            },
+            {
+                category: "Upacara & Adat",
+                question: "Upacara adat syukuran panen padi masyarakat Sunda di Jawa Barat yang rutin digelar setiap tahun adalah...",
+                options: ["Mappalili", "Seren Taun", "Tiwah", "Pasola"],
+                correct: 1
+            },
+
+            // C. MAKANAN KHAS DAERAH
+            {
+                category: "Makanan Khas",
+                question: "Masakan daging bercita rasa rempah pedas dari Sumatera Barat yang terkenal sebagai makanan terlezat di dunia adalah...",
+                options: ["Rawon", "Gudeg", "Rendang", "Konro"],
+                correct: 2
+            },
+            {
+                category: "Makanan Khas",
+                question: "Makanan khas Palembang, Sumatera Selatan yang terbuat dari olahan ikan dan sagu serta disajikan dengan kuah cuko adalah...",
+                options: ["Pempek", "Otak-otak", "Batagor", "Tekwan"],
+                correct: 0
+            },
+            {
+                category: "Makanan Khas",
+                question: "Makanan pokok khas masyarakat Papua dan Maluku yang terbuat dari tepung sagu dengan tekstur lengket seperti lem adalah...",
+                options: ["Tinutuan", "Papeda", "Lempah Kuning", "Lawar"],
+                correct: 1
+            },
+            {
+                category: "Makanan Khas",
+                question: "Makanan khas Daerah Istimewa Yogyakarta yang terbuat dari nangka muda yang dimasak lama dengan santan dan gula aren adalah...",
+                options: ["Krecek", "Garang Asem", "Gudeg", "Pecel"],
+                correct: 2
+            },
+            {
+                category: "Makanan Khas",
+                question: "Jajanan legendaris khas Betawi (Jakarta) dari beras ketan putih, telur bebek, ebi, dan kelapa sangrai adalah...",
+                options: ["Serabi", "Kerak Telor", "Tahu Gejrot", "Lumpia"],
+                correct: 1
+            },
+
+            // D. SENJATA TRADISIONAL
+            {
+                category: "Senjata Tradisional",
+                question: "Senjata tradisional khas masyarakat Aceh yang memiliki bilah melengkung menyerupai huruf L adalah...",
+                options: ["Rencong", "Badik", "Karambit", "Mandau"],
+                correct: 0
+            },
+            {
+                category: "Senjata Tradisional",
+                question: "Senjata tajam khas Suku Dayak di Kalimantan yang sarungnya dihiasi ukiran indah dan bulu burung enggang adalah...",
+                options: ["Parang Salawaku", "Mandau", "Kujang", "Sumpit"],
+                correct: 1
+            },
+            {
+                category: "Senjata Tradisional",
+                question: "Senjata tradisional khas Jawa yang memiliki bilah berkelok-kelok (luk) dan diakui UNESCO sebagai warisan budaya adalah...",
+                options: ["Tombak", "Golok", "Keris", "Pedang"],
+                correct: 2
+            },
+            {
+                category: "Senjata Tradisional",
+                question: "Senjata tradisional kebanggaan masyarakat Jawa Barat (Sunda) yang bentuknya unik dan melambangkan kekuatan adalah...",
+                options: ["Kujang", "Celurit", "Badek", "Karih"],
+                correct: 0
+            },
+            {
+                category: "Senjata Tradisional",
+                question: "Senjata tradisional khas Suku Madura, Jawa Timur yang memiliki bilah melengkung seperti bulan sabit adalah...",
+                options: ["keris", "Celurit", "Pisau Belati", "trisula"],
+                correct: 1
+            },
+
+            // E. RUMAH ADAT NUSANTARA
+            {
+                category: "Rumah Adat",
+                question: "Rumah adat khas Minangkabau, Sumatera Barat yang memiliki atap meruncing menyerupai tanduk kerbau disebut...",
+                options: ["Rumah Limas", "Rumah Gadang", "Rumah Bolon", "Rumah Krong Bade"],
+                correct: 1
+            },
+            {
+                category: "Rumah Adat",
+                question: "Rumah adat Suku Dani di Papua yang berbentuk bundar dengan atap jerami kerucut untuk menahan hawa dingin adalah...",
+                options: ["Rumah Baileo", "Rumah Honai", "Rumah Kariwari", "Rumah Dulohupa"],
+                correct: 1
+            },
+            {
+                category: "Rumah Adat",
+                question: "Rumah adat Suku Toraja di Sulawesi Selatan yang atapnya melengkung megah menyerupai perahu adalah...",
+                options: ["Tongkonan", "Balla Lompoa", "Souraja", "Boyang"],
+                correct: 0
+            },
+            {
+                category: "Rumah Adat",
+                question: "Rumah adat tradisional masyarakat Jawa Tengah dan Yogyakarta yang memiliki empat tiang utama (Soko Guru) adalah...",
+                options: ["Rumah Kebaya", "Rumah Joglo", "Rumah Kasepuhan", "Rumah Panggung"],
+                correct: 1
+            },
+            {
+                category: "Rumah Adat",
+                question: "Rumah adat Suku Dayak di Kalimantan Barat yang berukuran sangat panjang dan dihuni banyak keluarga disebut...",
+                options: ["Rumah Betang / Radakng", "Rumah Lamin", "Rumah Bubungan Tinggi", "Rumah Baloy"],
+                correct: 0
+            }
+        ];
+
+        /**************************************************************
+         * 2. WEB AUDIO SYNTHESIZER (EFEK SUARA TANPA FILE EKSTERNAL)
+         **************************************************************/
+        class SoundManager {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+            playPop() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(680, this.ctx.currentTime + 0.12);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.12);
+            }
+            playCorrect() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
+                    gain.gain.setValueAtTime(0.25, this.ctx.currentTime + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.008, this.ctx.currentTime + idx * 0.08 + 0.25);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + idx * 0.08);
+                    osc.stop(this.ctx.currentTime + idx * 0.08 + 0.25);
+                });
+            }
+            playWrong() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const notes = [280, 210];
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.15);
+                    gain.gain.setValueAtTime(0.18, this.ctx.currentTime + idx * 0.15);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.15 + 0.25);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + idx * 0.15);
+                    osc.stop(this.ctx.currentTime + idx * 0.15 + 0.25);
+                });
+            }
+            playVictory() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const notes = [440, 554.37, 659.25, 880, 659.25, 880];
+                const times = [0, 0.12, 0.24, 0.36, 0.50, 0.64];
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + times[idx]);
+                    gain.gain.setValueAtTime(0.25, this.ctx.currentTime + times[idx]);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + times[idx] + 0.28);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + times[idx]);
+                    osc.stop(this.ctx.currentTime + times[idx] + 0.28);
+                });
+            }
+        }
+
+        const sound = new SoundManager();
+
+        /**************************************************************
+         * 3. GAME STATE & CONFIGURATION
+         **************************************************************/
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let W = window.innerWidth;
+        let H = window.innerHeight;
+        let waterSurfaceY = H * 0.36;
+        let seabedY = H * 0.88;
+
+        let gameState = 'MENU'; // 'MENU', 'PLAYING', 'GAMEOVER'
+        let numPlayers = 1;
+        let currentLevel = 1;
+        let questionList = [];
+        let currentQuestionIndex = 0;
+        let currentQuestion = null;
+        let globalTime = 0;
+
+        // Players Array
+        let players = [];
+        // Fishes Array (4 fishes corresponding to A, B, C, D)
+        let fishes = [];
+        // Visual Effects (Bubbles, Floating Texts, Particles)
+        let bubbles = [];
+        let floatingTexts = [];
+        let particles = [];
+        let clouds = [];
+        let corals = [];
+
+        // Control Inputs State
+        const inputState = {
+            p1: { left: false, right: false, down: false },
+            p2: { left: false, right: false, down: false }
+        };
+
+        /**************************************************************
+         * 4. ENVIRONMENT INITIALIZATION (CLOUDS & CORALS)
+         **************************************************************/
+        function initEnvironment() {
+            W = window.innerWidth;
+            H = window.innerHeight;
+            canvas.width = W;
+            canvas.height = H;
+            waterSurfaceY = Math.max(195, Math.min(H * 0.36, 290));
+            seabedY = H - 55;
+
+            // Clouds
+            clouds = [];
+            const cloudCount = Math.max(4, Math.floor(W / 240));
+            for (let i = 0; i < cloudCount; i++) {
+                clouds.push({
+                    x: (W / cloudCount) * i + Math.random() * 80,
+                    y: waterSurfaceY - 45 - Math.random() * 65,
+                    scale: 0.7 + Math.random() * 0.55,
+                    speed: 0.15 + Math.random() * 0.2
+                });
+            }
+
+            // Corals & Seaweed on Seabed
+            corals = [];
+            const coralCount = Math.max(10, Math.floor(W / 85));
+            const coralColors = ['#ec4899', '#a855f7', '#f97316', '#eab308', '#14b8a6', '#f43f5e'];
+            for (let i = 0; i <= coralCount; i++) {
+                corals.push({
+                    x: (W / coralCount) * i + (Math.random() * 30 - 15),
+                    type: i % 3, // 0: tube coral, 1: fan seaweed, 2: bush coral
+                    color: coralColors[i % coralColors.length],
+                    size: 28 + Math.random() * 24,
+                    phase: Math.random() * Math.PI * 2
+                });
+            }
+
+            // Ambient underwater bubbles
+            bubbles = [];
+            for (let i = 0; i < 18; i++) {
+                bubbles.push({
+                    x: Math.random() * W,
+                    y: waterSurfaceY + Math.random() * (seabedY - waterSurfaceY),
+                    r: 2 + Math.random() * 5,
+                    speed: 0.4 + Math.random() * 0.8,
+                    wobble: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            initEnvironment();
+            // Keep boats inside screen bounds after resize
+            players.forEach(p => {
+                p.x = Math.max(70, Math.min(W - 70, p.x));
+                p.y = waterSurfaceY - 12;
+            });
+        });
+
+        /**************************************************************
+         * 5. PLAYER & FISH CREATION
+         **************************************************************/
+        const SCORE_CORRECT = 20;
+        const SCORE_WRONG_PENALTY = 10;
+
+        function createPlayers(mode) {
+            players = [];
+            if (mode === 1) {
+                players.push({
+                    id: 1,
+                    name: "Pemain 1 (Rubah)",
+                    character: "fox",
+                    x: W * 0.5,
+                    y: waterSurfaceY - 12,
+                    vx: 0,
+                    speed: 5.2,
+                    dir: 1,
+                    score: 0,
+                    correctCount: 0,
+                    wrongCount: 0,
+                    hookLen: 28,
+                    minHookLen: 28,
+                    maxHookLen: seabedY - waterSurfaceY + 10,
+                    hookSpeedDown: 5.5,
+                    hookSpeedUp: 7.5,
+                    caughtFish: null,
+                    boatColorMain: '#ef4444',
+                    boatColorTrim: '#334155',
+                    penaltyTimer: 0
+                });
+            } else {
+                players.push({
+                    id: 1,
+                    name: "Pemain 1 (Rubah)",
+                    character: "fox",
+                    x: W * 0.32,
+                    y: waterSurfaceY - 12,
+                    vx: 0,
+                    speed: 5.0,
+                    dir: 1,
+                    score: 0,
+                    correctCount: 0,
+                    wrongCount: 0,
+                    hookLen: 28,
+                    minHookLen: 28,
+                    maxHookLen: seabedY - waterSurfaceY + 10,
+                    hookSpeedDown: 5.5,
+                    hookSpeedUp: 7.5,
+                    caughtFish: null,
+                    boatColorMain: '#ef4444',
+                    boatColorTrim: '#334155',
+                    penaltyTimer: 0
+                });
+                players.push({
+                    id: 2,
+                    name: "Pemain 2 (Kucing)",
+                    character: "cat",
+                    x: W * 0.68,
+                    y: waterSurfaceY - 12,
+                    vx: 0,
+                    speed: 5.0,
+                    dir: 1,
+                    score: 0,
+                    correctCount: 0,
+                    wrongCount: 0,
+                    hookLen: 28,
+                    minHookLen: 28,
+                    maxHookLen: seabedY - waterSurfaceY + 10,
+                    hookSpeedDown: 5.5,
+                    hookSpeedUp: 7.5,
+                    caughtFish: null,
+                    boatColorMain: '#0284c7',
+                    boatColorTrim: '#1e293b',
+                    penaltyTimer: 0
+                });
+            }
+        }
+
+        function spawnFishesForQuestion() {
+            if (!currentQuestion) return;
+            fishes = [];
+            const letters = ['A', 'B', 'C', 'D'];
+            // 4 Distinct Fish Visual Styles matching the reference images
+            const fishStyles = [
+                { type: 'green', bodyColor: '#22c55e', finColor: '#eab308', stripeColor: '#15803d' },
+                { type: 'angelfish', bodyColor: '#2563eb', finColor: '#facc15', stripeColor: '#facc15' },
+                { type: 'puffer', bodyColor: '#fb923c', finColor: '#a855f7', stripeColor: '#facc15' },
+                { type: 'redspiny', bodyColor: '#f87171', finColor: '#dc2626', stripeColor: '#fecaca' }
+            ];
+
+            const topLane = waterSurfaceY + 80;
+            const bottomLane = seabedY - 55;
+            const laneHeight = (bottomLane - topLane) / 3;
+
+            for (let i = 0; i < 4; i++) {
+                const dir = i % 2 === 0 ? 1 : -1;
+                const baseSpeed = (1.15 + Math.random() * 0.75) * (1 + (currentLevel - 1) * 0.1);
+                const yPos = topLane + i * laneHeight + (Math.random() * 16 - 8);
+                const xPos = 100 + Math.random() * Math.max(200, W - 200);
+
+                fishes.push({
+                    optionIndex: i,
+                    letter: letters[i],
+                    answerText: currentQuestion.options[i],
+                    isCorrect: i === currentQuestion.correct,
+                    x: xPos,
+                    y: yPos,
+                    baseY: yPos,
+                    vx: dir * baseSpeed,
+                    dir: dir,
+                    radius: 26,
+                    style: fishStyles[i % fishStyles.length],
+                    wobblePhase: Math.random() * Math.PI * 2,
+                    caughtBy: null
+                });
+            }
+        }
+
+        /**************************************************************
+         * 6. QUESTION & HUD MANAGEMENT
+         **************************************************************/
+        function shuffleArray(arr) {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
+        function prepareQuestions() {
+            const countEl = document.getElementById('selectQuestionCount');
+            const selectedCount = countEl ? parseInt(countEl.value, 10) : 15;
+            const validCount = (!isNaN(selectedCount) && selectedCount > 0) ? Math.min(selectedCount, QUESTION_BANK.length) : 15;
+
+            // Shuffle all questions from the mixed cultural bank and slice according to selected count
+            const mixedQuestions = shuffleArray(QUESTION_BANK).slice(0, validCount);
+
+            // Shuffle option order inside each selected question
+            questionList = mixedQuestions.map(q => {
+                const correctText = q.options[q.correct];
+                const shuffledOpts = shuffleArray(q.options);
+                return {
+                    category: q.category,
+                    question: q.question,
+                    options: shuffledOpts,
+                    correct: shuffledOpts.indexOf(correctText)
+                };
+            });
+            currentQuestionIndex = 0;
+        }
+
+        function loadCurrentQuestion() {
+            if (currentQuestionIndex >= questionList.length) {
+                endGame();
+                return;
+            }
+            currentQuestion = questionList[currentQuestionIndex];
+            currentLevel = Math.floor(currentQuestionIndex / 4) + 1;
+
+            // Update Top Question Banner
+            document.getElementById('hudLevel').textContent = currentLevel;
+            document.getElementById('hudQuestionCounter').textContent = `Soal ${currentQuestionIndex + 1}/${questionList.length}`;
+            document.getElementById('qCategoryBadge').textContent = currentQuestion.category;
+            document.getElementById('qText').textContent = currentQuestion.question;
+
+            spawnFishesForQuestion();
+            updateHudStats();
+        }
+
+        function resetAllControls() {
+            inputState.p1.left = false;
+            inputState.p1.right = false;
+            inputState.p1.down = false;
+            inputState.p2.left = false;
+            inputState.p2.right = false;
+            inputState.p2.down = false;
+            ['btnP1Left', 'btnP1Down', 'btnP1Right', 'btnP2Left', 'btnP2Down', 'btnP2Right'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove('active-press');
+            });
+        }
+
+        function updateHudStats() {
+            if (players[0]) {
+                const p1ScoreEl = document.getElementById('p1Score');
+                p1ScoreEl.textContent = players[0].score;
+            }
+            if (numPlayers === 2 && players[1]) {
+                const p2ScoreEl = document.getElementById('p2Score');
+                p2ScoreEl.textContent = players[1].score;
+            }
+        }
+
+        /**************************************************************
+         * 7. GAME FLOW (START, CATCH VALIDATION, GAME OVER)
+         **************************************************************/
+        function startGame(mode) {
+            sound.init();
+            sound.playPop();
+            numPlayers = mode;
+            gameState = 'PLAYING';
+            const gameOverModal = document.getElementById('gameOverModal');
+            document.getElementById('menuModal').classList.add('hidden');
+            gameOverModal.classList.add('hidden');
+            gameOverModal.style.display = '';
+            document.getElementById('hudOverlay').classList.remove('hidden');
+            document.getElementById('dpadContainer').classList.remove('hidden');
+
+            const p2Hud = document.getElementById('p2HudBox');
+            const p2Dpad = document.getElementById('p2DpadWrapper');
+            const p1Label = document.getElementById('p1ControlLabel');
+
+            if (mode === 2) {
+                p2Hud.classList.remove('hidden');
+                p2Hud.classList.add('flex');
+                p2Dpad.classList.remove('hidden');
+                p2Dpad.classList.add('flex');
+                p1Label.textContent = "Kontrol P1 (A / S / D)";
+            } else {
+                p2Hud.classList.add('hidden');
+                p2Hud.classList.remove('flex');
+                p2Dpad.classList.add('hidden');
+                p2Dpad.classList.remove('flex');
+                p1Label.textContent = "Kontrol Kapal (◀ / ▼ / ▶)";
+            }
+
+            initEnvironment();
+            createPlayers(mode);
+            prepareQuestions();
+            loadCurrentQuestion();
+        }
+
+        function handleFishDelivered(player, fish) {
+            if (gameState !== 'PLAYING') return;
+
+            if (fish.isCorrect) {
+                // Correct Answer: Add Score (+20)
+                sound.playCorrect();
+                player.score += SCORE_CORRECT;
+                player.correctCount++;
+                spawnParticles(player.x, player.y, '#facc15', 24);
+                addFloatingText(`+${SCORE_CORRECT} BENAR! (${fish.answerText})`, player.x, player.y - 38, '#16a34a');
+
+                // Release all fishes and reset hooks cleanly before moving to next question or ending game
+                player.caughtFish = null;
+                players.forEach(p => {
+                    p.caughtFish = null;
+                    p.hookLen = p.minHookLen;
+                });
+
+                currentQuestionIndex++;
+                updateHudStats();
+
+                // Check immediately if this was the last question
+                if (currentQuestionIndex >= questionList.length) {
+                    fishes = [];
+                    endGame();
+                } else {
+                    loadCurrentQuestion();
+                }
+            } else {
+                // Wrong Answer: Deduct Score (-10, minimum 0)
+                sound.playWrong();
+                player.score = Math.max(0, player.score - SCORE_WRONG_PENALTY);
+                player.wrongCount++;
+                player.penaltyTimer = 40;
+                spawnParticles(player.x, player.y, '#ef4444', 18);
+                addFloatingText(`-${SCORE_WRONG_PENALTY} SALAH!`, player.x, player.y - 38, '#dc2626');
+
+                // Remove the wrong fish from the sea so players can focus on remaining options
+                const idx = fishes.indexOf(fish);
+                if (idx !== -1) {
+                    fishes.splice(idx, 1);
+                }
+                player.caughtFish = null;
+
+                updateHudStats();
+            }
+        }
+
+        function endGame() {
+            if (gameState === 'GAMEOVER') return;
+            gameState = 'GAMEOVER';
+            resetAllControls();
+            fishes = [];
+            sound.playVictory();
+
+            // Celebration confetti particles across the screen
+            spawnParticles(W * 0.3, H * 0.35, '#facc15', 28);
+            spawnParticles(W * 0.7, H * 0.35, '#38bdf8', 28);
+            spawnParticles(W * 0.5, H * 0.25, '#22c55e', 32);
+
+            // Hide on-screen D-Pad & HUD so the Game Over Modal is immediately visible and interactive
+            document.getElementById('dpadContainer').classList.add('hidden');
+            document.getElementById('hudOverlay').classList.add('hidden');
+
+            const modal = document.getElementById('gameOverModal');
+            const emoji = document.getElementById('endEmoji');
+            const title = document.getElementById('endTitle');
+            const subtitle = document.getElementById('endSubtitle');
+            const summary = document.getElementById('endScoreSummary');
+
+            if (numPlayers === 1) {
+                const p1 = players[0];
+                emoji.textContent = "🏆";
+                title.textContent = "PERMAINAN SELESAI!";
+                subtitle.textContent = `Hebat! Kamu telah menyelesaikan ${questionList.length} soal Budaya Nusantara!`;
+                summary.innerHTML = `
+                    <div class="flex justify-between items-center text-base font-bold text-slate-700 border-b border-slate-200 pb-2">
+                        <span>🦊 Skor Akhir:</span>
+                        <span class="text-2xl font-black text-amber-600">${p1.score} Poin</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 pt-1 text-xs font-bold">
+                        <div class="bg-emerald-100 text-emerald-800 py-1.5 px-2 rounded-xl border border-emerald-200">
+                            ✅ Benar: ${p1.correctCount}x (+${p1.correctCount * SCORE_CORRECT})
+                        </div>
+                        <div class="bg-rose-100 text-rose-800 py-1.5 px-2 rounded-xl border border-rose-200">
+                            ❌ Salah: ${p1.wrongCount}x (-${p1.wrongCount * SCORE_WRONG_PENALTY})
+                        </div>
+                    </div>
+                `;
+            } else {
+                const p1 = players[0];
+                const p2 = players[1];
+                let winnerText = "SERI! Kedua Pemain Sama Hebat!";
+                if (p1.score > p2.score) winnerText = "🏆 PEMAIN 1 (Rubah) MENANG!";
+                else if (p2.score > p1.score) winnerText = "🏆 PEMAIN 2 (Kucing) MENANG!";
+
+                emoji.textContent = "🎉";
+                title.textContent = winnerText;
+                subtitle.textContent = `Pertandingan ${questionList.length} Soal Budaya Nusantara Selesai!`;
+                summary.innerHTML = `
+                    <div class="p-2.5 rounded-xl bg-amber-100 border border-amber-300 text-left space-y-1">
+                        <div class="flex justify-between items-center text-sm font-bold text-slate-800">
+                            <span>🦊 Pemain 1 (Rubah)</span>
+                            <span class="text-lg font-black text-amber-700">${p1.score} Poin</span>
+                        </div>
+                        <div class="text-[11px] font-bold text-slate-600 flex gap-3">
+                            <span class="text-emerald-700">✅ Benar: ${p1.correctCount}</span>
+                            <span class="text-rose-600">❌ Salah: ${p1.wrongCount}</span>
+                        </div>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-sky-100 border border-sky-300 text-left space-y-1">
+                        <div class="flex justify-between items-center text-sm font-bold text-slate-800">
+                            <span>🐱 Pemain 2 (Kucing)</span>
+                            <span class="text-lg font-black text-sky-700">${p2.score} Poin</span>
+                        </div>
+                        <div class="text-[11px] font-bold text-slate-600 flex gap-3">
+                            <span class="text-emerald-700">✅ Benar: ${p2.correctCount}</span>
+                            <span class="text-rose-600">❌ Salah: ${p2.wrongCount}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            modal.style.display = '';
+            modal.classList.remove('hidden');
+        }
+
+        function addFloatingText(text, x, y, color) {
+            floatingTexts.push({
+                text,
+                x,
+                y,
+                vy: -1.6,
+                alpha: 1,
+                color
+            });
+        }
+
+        function spawnParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1.5 + Math.random() * 4.5;
+                particles.push({
+                    x,
+                    y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 1,
+                    r: 3 + Math.random() * 4,
+                    color,
+                    alpha: 1
+                });
+            }
+        }
+
+        /**************************************************************
+         * 8. MAIN UPDATE LOOP (PHYSICS, BOAT, HOOK, FISHES)
+         **************************************************************/
+        function updateGame() {
+            globalTime += 0.03;
+
+            // Update Clouds
+            clouds.forEach(c => {
+                c.x -= c.speed;
+                if (c.x < -120) c.x = W + 120;
+            });
+
+            // Update Ambient Underwater Bubbles
+            bubbles.forEach(b => {
+                b.y -= b.speed;
+                b.x += Math.sin(globalTime + b.wobble) * 0.35;
+                if (b.y < waterSurfaceY + 10) {
+                    b.y = seabedY - 10;
+                    b.x = Math.random() * W;
+                }
+            });
+
+            // Always update Particles & Floating Texts even when game ends so celebration effects animate smoothly
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const pt = particles[i];
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.vy += 0.15;
+                pt.alpha -= 0.022;
+                if (pt.alpha <= 0) particles.splice(i, 1);
+            }
+
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                const ft = floatingTexts[i];
+                ft.y += ft.vy;
+                ft.alpha -= 0.018;
+                if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+            }
+
+            if (gameState !== 'PLAYING') return;
+
+            // Update Players
+            players.forEach((p, idx) => {
+                const ctrl = idx === 0 ? inputState.p1 : inputState.p2;
+
+                // Horizontal boat movement
+                if (ctrl.left) {
+                    p.vx = -p.speed;
+                } else if (ctrl.right) {
+                    p.vx = p.speed;
+                } else {
+                    p.vx *= 0.82;
+                }
+
+                p.x += p.vx;
+                p.x = Math.max(95, Math.min(W - 95, p.x));
+
+                // Gentle bobbing on waves + shake effect if wrong fish caught recently
+                const shakeOffset = p.penaltyTimer > 0 ? Math.sin(p.penaltyTimer * 1.5) * 4 : 0;
+                p.y = waterSurfaceY - 12 + Math.sin(globalTime * 1.6 + idx * 2) * 3.5 + shakeOffset;
+
+                if (p.penaltyTimer > 0) p.penaltyTimer--;
+
+                // Rod Tip Coordinates (Fishing rod extends to the left side of the boat like reference image)
+                const rodTipX = p.x - 68;
+                const rodTipY = p.y - 46;
+                p.maxHookLen = seabedY - rodTipY - 15;
+
+                // Vertical Fishing Line Movement:
+                // Hold Down button -> Line goes down. Release Down button -> Line automatically retracts up!
+                if (ctrl.down && !p.caughtFish) {
+                    p.hookLen = Math.min(p.maxHookLen, p.hookLen + p.hookSpeedDown);
+                } else {
+                    p.hookLen = Math.max(p.minHookLen, p.hookLen - p.hookSpeedUp);
+                }
+
+                const hookX = rodTipX;
+                const hookY = rodTipY + p.hookLen;
+
+                // If carrying a caught fish, pull it with the hook
+                if (p.caughtFish) {
+                    p.caughtFish.x = hookX;
+                    p.caughtFish.y = hookY + 14;
+
+                    // Check if hook has retracted back to the top
+                    if (p.hookLen <= p.minHookLen + 6) {
+                        handleFishDelivered(p, p.caughtFish);
+                    }
+                } else if (p.hookLen > p.minHookLen + 10) {
+                    // Check collision with swimming fishes
+                    for (let f of fishes) {
+                        if (!f.caughtBy) {
+                            const dx = hookX - f.x;
+                            const dy = hookY - f.y;
+                            const dist = Math.hypot(dx, dy);
+                            if (dist < f.radius + 14) {
+                                f.caughtBy = p;
+                                p.caughtFish = f;
+                                sound.playPop();
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Update Swimming Fishes
+            fishes.forEach(f => {
+                if (f.caughtBy) return;
+
+                f.x += f.vx;
+                f.y = f.baseY + Math.sin(globalTime * 1.8 + f.wobblePhase) * 7;
+
+                // Turn around smoothly at screen edges
+                const margin = 75;
+                if (f.x > W - margin) {
+                    f.x = W - margin;
+                    f.vx = -Math.abs(f.vx);
+                    f.dir = -1;
+                } else if (f.x < margin) {
+                    f.x = margin;
+                    f.vx = Math.abs(f.vx);
+                    f.dir = 1;
+                }
+            });
+        }
+
+        /**************************************************************
+         * 9. RENDERING ARTWORK (MATCHING UPLOADED REFERENCE IMAGES)
+         **************************************************************/
+        function drawScene() {
+            ctx.clearRect(0, 0, W, H);
+
+            // 1. SKY BACKGROUND GRADIENT
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, waterSurfaceY);
+            skyGrad.addColorStop(0, '#0284c7');
+            skyGrad.addColorStop(0.55, '#38bdf8');
+            skyGrad.addColorStop(1, '#bae6fd');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, W, waterSurfaceY + 20);
+
+            // 2. PUFFY WHITE CLOUDS ON HORIZON
+            clouds.forEach(c => drawCloud(c.x, c.y, c.scale));
+
+            // Continuous background cloud bank near water horizon like reference image
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+            for (let x = 0; x < W + 90; x += 75) {
+                const r = 34 + Math.sin(x * 0.05) * 10;
+                ctx.beginPath();
+                ctx.arc(x, waterSurfaceY - 8, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 3. TROPICAL ISLAND WITH PALM TREES (Top Right like reference image)
+            drawTropicalIsland(W - 95, waterSurfaceY + 5);
+
+            // 4. BACK WATER WAVE LAYER
+            drawWaveLayer(waterSurfaceY - 8, '#38bdf8', '#ffffff', 16, 0.018, globalTime * 0.9);
+
+            // 5. BOATS & CHARACTERS (Drawn between wave layers so hull sits inside water)
+            players.forEach(p => drawFishingBoat(p));
+
+            // 6. FRONT WATER BODY & LAYERED WAVES
+            const seaGrad = ctx.createLinearGradient(0, waterSurfaceY, 0, H);
+            seaGrad.addColorStop(0, '#22a6b3');
+            seaGrad.addColorStop(0.25, '#38ada9');
+            seaGrad.addColorStop(0.75, '#3c99dc');
+            seaGrad.addColorStop(1, '#1e5f8a');
+            ctx.fillStyle = seaGrad;
+            ctx.fillRect(0, waterSurfaceY + 6, W, H - waterSurfaceY);
+
+            drawWaveLayer(waterSurfaceY + 3, '#48b8d0', '#ffffff', 14, 0.02, -globalTime * 1.1 + 1.5);
+            drawWaveLayer(waterSurfaceY + 18, '#3aa6b9', 'rgba(255,255,255,0.85)', 12, 0.02, globalTime * 0.7 + 3.0);
+
+            // 7. UNDERWATER DISTANT HILLS & SEABED CORALS (Matching reference image)
+            drawSeabedAndCorals();
+
+            // 8. AMBIENT UNDERWATER BUBBLES
+            ctx.save();
+            bubbles.forEach(b => {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+            ctx.restore();
+
+            // 9. FISHING LINES & HOOKS (Drawn in front of water)
+            players.forEach(p => drawFishingLineAndHook(p));
+
+            // 10. FISHES & THOUGHT BUBBLES
+            fishes.forEach(f => drawFishWithBubble(f));
+
+            // 11. PARTICLES & FLOATING TEXTS
+            particles.forEach(pt => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, pt.alpha);
+                ctx.fillStyle = pt.color;
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            floatingTexts.forEach(ft => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, ft.alpha);
+                ctx.font = '900 20px "Fredoka", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 5;
+                ctx.strokeText(ft.text, ft.x, ft.y);
+                ctx.fillStyle = ft.color;
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ctx.restore();
+            });
+        }
+
+        function drawCloud(x, y, scale) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.beginPath();
+            ctx.arc(0, 0, 28, 0, Math.PI * 2);
+            ctx.arc(26, -8, 34, 0, Math.PI * 2);
+            ctx.arc(56, 0, 26, 0, Math.PI * 2);
+            ctx.arc(28, 10, 28, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawTropicalIsland(x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Brown geometric rock cliff base
+            ctx.fillStyle = '#9c6644';
+            ctx.beginPath();
+            ctx.moveTo(-65, 10);
+            ctx.lineTo(-65, -35);
+            ctx.lineTo(75, -35);
+            ctx.lineTo(75, 10);
+            ctx.closePath();
+            ctx.fill();
+
+            // Rock facets
+            ctx.fillStyle = '#7f5539';
+            ctx.beginPath();
+            ctx.moveTo(-45, 10);
+            ctx.lineTo(-20, -30);
+            ctx.lineTo(15, 10);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = '#b08968';
+            ctx.beginPath();
+            ctx.moveTo(10, 10);
+            ctx.lineTo(35, -30);
+            ctx.lineTo(65, 10);
+            ctx.closePath();
+            ctx.fill();
+
+            // Lush green grassy top
+            ctx.fillStyle = '#65a30d';
+            ctx.beginPath();
+            ctx.ellipse(5, -42, 72, 22, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#84cc16';
+            ctx.beginPath();
+            ctx.ellipse(5, -46, 66, 17, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Two Palm Trees (matching reference top-right corner)
+            drawPalmTree(-18, -52, -0.22, 0.9);
+            drawPalmTree(28, -50, 0.15, 1.0);
+
+            ctx.restore();
+        }
+
+        function drawPalmTree(x, y, tilt, scale) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+
+            // Curved Trunk
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = 11;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(tilt * 60, -35, tilt * 95, -72);
+            ctx.stroke();
+
+            const topX = tilt * 95;
+            const topY = -72;
+
+            // Coconuts
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.arc(topX - 5, topY + 5, 5, 0, Math.PI * 2);
+            ctx.arc(topX + 5, topY + 6, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Palm Leaves
+            const leafAngles = [-2.6, -1.9, -1.1, -0.4, 0.3];
+            leafAngles.forEach(ang => {
+                ctx.save();
+                ctx.translate(topX, topY);
+                ctx.rotate(ang);
+                ctx.fillStyle = '#4d7c0f';
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(22, -14, 46, 4);
+                ctx.quadraticCurveTo(22, -2, 0, 0);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            ctx.restore();
+        }
+
+        function drawWaveLayer(baseY, fillColor, crestColor, amp, freq, phase) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(0, baseY);
+
+            const step = 60;
+            for (let x = 0; x <= W + step; x += step) {
+                const waveOffset = Math.sin(x * freq + phase) * 4;
+                ctx.quadraticCurveTo(
+                    x - step / 2,
+                    baseY + amp + waveOffset,
+                    x,
+                    baseY - amp * 0.4 + waveOffset
+                );
+            }
+            ctx.lineTo(W, baseY + 45);
+            ctx.lineTo(0, baseY + 45);
+            ctx.closePath();
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+
+            // White scalloped wave crest outline like reference image
+            ctx.beginPath();
+            ctx.moveTo(0, baseY);
+            for (let x = 0; x <= W + step; x += step) {
+                const waveOffset = Math.sin(x * freq + phase) * 4;
+                ctx.quadraticCurveTo(
+                    x - step / 2,
+                    baseY + amp + waveOffset,
+                    x,
+                    baseY - amp * 0.4 + waveOffset
+                );
+            }
+            ctx.strokeStyle = crestColor;
+            ctx.lineWidth = 3.5;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawSeabedAndCorals() {
+            // Distant underwater hills
+            ctx.fillStyle = '#5f9ea0';
+            ctx.beginPath();
+            ctx.moveTo(0, seabedY - 25);
+            ctx.quadraticCurveTo(W * 0.25, seabedY - 65, W * 0.55, seabedY - 20);
+            ctx.quadraticCurveTo(W * 0.8, seabedY - 55, W, seabedY - 25);
+            ctx.lineTo(W, H);
+            ctx.lineTo(0, H);
+            ctx.closePath();
+            ctx.fill();
+
+            // Closer seabed mound
+            ctx.fillStyle = '#2b7a9b';
+            ctx.beginPath();
+            ctx.moveTo(0, seabedY);
+            ctx.quadraticCurveTo(W * 0.35, seabedY - 35, W * 0.7, seabedY - 5);
+            ctx.quadraticCurveTo(W * 0.9, seabedY - 25, W, seabedY);
+            ctx.lineTo(W, H);
+            ctx.lineTo(0, H);
+            ctx.closePath();
+            ctx.fill();
+
+            // Purple grass/sponge carpet along bottom like reference image
+            ctx.fillStyle = '#581c87';
+            for (let x = 0; x < W; x += 18) {
+                const h = 14 + Math.sin(x * 0.2) * 5;
+                ctx.beginPath();
+                ctx.arc(x, H - 10, h, Math.PI, 0);
+                ctx.fill();
+            }
+
+            // Corals & Seaweeds
+            corals.forEach(c => {
+                ctx.save();
+                ctx.translate(c.x, H - 12);
+                const sway = Math.sin(globalTime * 1.5 + c.phase) * 4;
+
+                if (c.type === 0) {
+                    // Pink/Purple Tube Coral (like bottom-left of reference image)
+                    ctx.fillStyle = c.color;
+                    [-12, 0, 12].forEach((ox, idx) => {
+                        const tubeH = c.size * (idx === 1 ? 1.15 : 0.85);
+                        ctx.beginPath();
+                        ctx.roundRect(ox - 5 + sway * 0.3, -tubeH, 10, tubeH, 6);
+                        ctx.fill();
+                        ctx.fillStyle = '#fde047';
+                        ctx.beginPath();
+                        ctx.ellipse(ox + sway * 0.3, -tubeH, 4, 2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = c.color;
+                    });
+                } else if (c.type === 1) {
+                    // Seaweed fronds
+                    ctx.strokeStyle = '#0d9488';
+                    ctx.lineWidth = 4;
+                    ctx.lineCap = 'round';
+                    for (let j = -1; j <= 1; j++) {
+                        ctx.beginPath();
+                        ctx.moveTo(j * 6, 0);
+                        ctx.quadraticCurveTo(j * 10 + sway, -c.size * 0.5, j * 8 + sway * 1.5, -c.size);
+                        ctx.stroke();
+                    }
+                } else {
+                    // Rounded Brain/Petal Coral
+                    ctx.fillStyle = c.color;
+                    for (let a = -1.2; a <= 1.2; a += 0.6) {
+                        ctx.save();
+                        ctx.rotate(a * 0.4);
+                        ctx.beginPath();
+                        ctx.ellipse(0, -c.size * 0.45, 8, c.size * 0.45, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+                ctx.restore();
+            });
+        }
+
+        function drawFishingBoat(p) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+
+            if (p.penaltyTimer > 0 && p.penaltyTimer % 6 > 3) {
+                ctx.globalAlpha = 0.65;
+            }
+
+            // 1. Cabin on the right side of the boat (like reference image)
+            ctx.fillStyle = '#f8fafc';
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.moveTo(8, -10);
+            ctx.lineTo(14, -44);
+            ctx.lineTo(44, -44);
+            ctx.lineTo(48, -10);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Cabin Red/Blue Roof
+            ctx.fillStyle = p.boatColorMain;
+            ctx.beginPath();
+            ctx.roundRect(10, -50, 38, 8, 4);
+            ctx.fill();
+            ctx.stroke();
+
+            // Cabin Window
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.roundRect(18, -38, 20, 14, 3);
+            ctx.fill();
+
+            // Green Flag on top of Cabin (matching reference image)
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(36, -50);
+            ctx.lineTo(32, -68);
+            ctx.stroke();
+
+            ctx.fillStyle = p.id === 1 ? '#84cc16' : '#38bdf8';
+            ctx.beginPath();
+            ctx.moveTo(32, -68);
+            ctx.quadraticCurveTo(18, -70, 12, -62);
+            ctx.quadraticCurveTo(22, -56, 33, -58);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // 2. Cute Character (Fox for P1, Cat for P2) sitting in boat
+            if (p.character === 'fox') {
+                drawFoxCharacter(-12, -16);
+            } else {
+                drawCatCharacter(-12, -16);
+            }
+
+            // 3. Fishing Rod extending leftwards
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 4.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-18, -12);
+            ctx.lineTo(-68, -46);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // 4. Boat Hull (Curved Red/Dark-Grey hull like reference image)
+            ctx.beginPath();
+            ctx.moveTo(-55, -14);
+            ctx.quadraticCurveTo(0, -6, 62, -24);
+            ctx.lineTo(44, 14);
+            ctx.quadraticCurveTo(0, 20, -42, 12);
+            ctx.closePath();
+            ctx.fillStyle = p.boatColorTrim;
+            ctx.fill();
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = '#1e293b';
+            ctx.stroke();
+
+            // Upper Hull Red/Blue Stripe
+            ctx.beginPath();
+            ctx.moveTo(-55, -14);
+            ctx.quadraticCurveTo(0, -6, 62, -24);
+            ctx.lineTo(54, -6);
+            ctx.quadraticCurveTo(0, 6, -48, -2);
+            ctx.closePath();
+            ctx.fillStyle = p.boatColorMain;
+            ctx.fill();
+            ctx.stroke();
+
+            // 5. Lifebuoy Ring on side of boat (Green/Yellow like reference)
+            ctx.save();
+            ctx.translate(32, -8);
+            ctx.beginPath();
+            ctx.arc(0, 0, 12, 0, Math.PI * 2);
+            ctx.fillStyle = '#84cc16';
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#1e293b';
+            ctx.stroke();
+
+            // Yellow segments on lifebuoy
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath();
+            ctx.arc(0, 0, 12, -0.5, 0.5);
+            ctx.lineTo(0, 0);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(0, 0, 12, 2.6, 3.6);
+            ctx.lineTo(0, 0);
+            ctx.fill();
+
+            // Inner hole of lifebuoy
+            ctx.beginPath();
+            ctx.arc(0, 0, 5, 0, Math.PI * 2);
+            ctx.fillStyle = p.boatColorMain;
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+
+            // Player Badge Label above boat in 2-Player mode
+            if (numPlayers === 2) {
+                ctx.font = '900 12px "Nunito", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = p.id === 1 ? '#fef08a' : '#bae6fd';
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 3;
+                ctx.strokeText(`P${p.id}`, -8, -68);
+                ctx.fillText(`P${p.id}`, -8, -68);
+            }
+
+            ctx.restore();
+        }
+
+        function drawFoxCharacter(x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Green shirt body
+            ctx.fillStyle = '#84cc16';
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(-12, -6, 24, 18, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            // Bushy Fox Tail
+            ctx.fillStyle = '#d97706';
+            ctx.beginPath();
+            ctx.moveTo(10, 4);
+            ctx.quadraticCurveTo(28, -10, 18, -26);
+            ctx.quadraticCurveTo(6, -16, 10, 4);
+            ctx.fill();
+            ctx.stroke();
+
+            // Big Fox Ears
+            ctx.fillStyle = '#f59e0b';
+            // Left ear
+            ctx.beginPath();
+            ctx.moveTo(-14, -22);
+            ctx.lineTo(-10, -48);
+            ctx.lineTo(0, -26);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            // Right ear
+            ctx.beginPath();
+            ctx.moveTo(0, -24);
+            ctx.lineTo(14, -46);
+            ctx.lineTo(14, -18);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Fox Head
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.ellipse(0, -16, 16, 13, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Cream Cheeks / Smile area
+            ctx.fillStyle = '#fef3c7';
+            ctx.beginPath();
+            ctx.ellipse(-2, -12, 13, 8, 0, 0, Math.PI);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(-6, -18, 3.5, 0, Math.PI * 2);
+            ctx.arc(4, -18, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(-7, -18, 2, 0, Math.PI * 2);
+            ctx.arc(3, -18, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nose & Big Grin
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.arc(-11, -14, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(-3, -11, 5, 0.1, Math.PI - 0.1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function drawCatCharacter(x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Yellow shirt body
+            ctx.fillStyle = '#facc15';
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(-12, -6, 24, 18, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            // Cat Ears
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.moveTo(-14, -22);
+            ctx.lineTo(-12, -42);
+            ctx.lineTo(-1, -26);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(1, -26);
+            ctx.lineTo(13, -42);
+            ctx.lineTo(14, -20);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Cat Head
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.ellipse(0, -16, 16, 13, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // White Muzzle
+            ctx.fillStyle = '#f0f9ff';
+            ctx.beginPath();
+            ctx.ellipse(-2, -12, 12, 7, 0, 0, Math.PI);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(-6, -18, 3.5, 0, Math.PI * 2);
+            ctx.arc(4, -18, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(-7, -18, 2, 0, Math.PI * 2);
+            ctx.arc(3, -18, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pink Nose & Smile
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath();
+            ctx.arc(-8, -14, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawFishingLineAndHook(p) {
+            const rodTipX = p.x - 68;
+            const rodTipY = p.y - 46;
+            const hookX = rodTipX;
+            const hookY = rodTipY + p.hookLen;
+
+            ctx.save();
+            // Fishing Line
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.moveTo(rodTipX, rodTipY);
+            ctx.lineTo(hookX, hookY);
+            ctx.stroke();
+
+            // J-Shaped Metal Hook (like reference image)
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(hookX, hookY - 4, 3, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(hookX, hookY - 1);
+            ctx.lineTo(hookX, hookY + 11);
+            ctx.arc(hookX - 6, hookY + 11, 6, 0, Math.PI, false);
+            ctx.lineTo(hookX - 12, hookY + 6);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawFishWithBubble(f) {
+            ctx.save();
+            ctx.translate(f.x, f.y);
+
+            // Flip horizontally depending on swim direction
+            ctx.save();
+            ctx.scale(f.dir, 1);
+
+            const st = f.style;
+
+            if (st.type === 'angelfish') {
+                // Blue & Yellow Striped Angelfish (like fish 7 and 3 in reference image)
+                // Tail
+                ctx.fillStyle = st.bodyColor;
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-16, 0);
+                ctx.lineTo(-30, -14);
+                ctx.lineTo(-26, 0);
+                ctx.lineTo(-30, 14);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Triangular Angelfish Body
+                ctx.fillStyle = st.bodyColor;
+                ctx.beginPath();
+                ctx.moveTo(24, 0);
+                ctx.quadraticCurveTo(-5, -32, -22, -26);
+                ctx.quadraticCurveTo(-14, 0, -22, 26);
+                ctx.quadraticCurveTo(-5, 32, 24, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Yellow vertical stripes
+                ctx.strokeStyle = st.stripeColor;
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                ctx.moveTo(2, -16);
+                ctx.lineTo(2, 16);
+                ctx.moveTo(-9, -21);
+                ctx.lineTo(-9, 21);
+                ctx.stroke();
+
+                // Snout
+                ctx.fillStyle = '#1e3a8a';
+                ctx.beginPath();
+                ctx.ellipse(24, 2, 5, 2.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (st.type === 'puffer') {
+                // Orange/Purple Pufferfish (like caught fish in reference image)
+                // Tail & Dorsal fins
+                ctx.fillStyle = st.finColor;
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.ellipse(-24, 0, 8, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.ellipse(-6, -20, 9, 6, -0.3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Round Puffer Body
+                ctx.fillStyle = st.bodyColor;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 24, 20, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Puffer lips
+                ctx.fillStyle = '#facc15';
+                ctx.beginPath();
+                ctx.ellipse(23, 2, 4, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            } else {
+                // Classic Round Tropical Fish (Green fish in reference image)
+                // Tail fin
+                ctx.fillStyle = st.finColor;
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-18, 0);
+                ctx.lineTo(-32, -14);
+                ctx.lineTo(-28, 0);
+                ctx.lineTo(-32, 14);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Top dorsal fin
+                ctx.beginPath();
+                ctx.arc(-2, -16, 8, Math.PI, 0);
+                ctx.fill();
+                ctx.stroke();
+
+                // Main Oval Body
+                ctx.fillStyle = st.bodyColor;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 23, 17, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Cute Yellow Smile Lip
+                ctx.fillStyle = '#facc15';
+                ctx.beginPath();
+                ctx.ellipse(16, 6, 7, 3, -0.1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            // Big Cartoon Eye (Shared across all fishes like reference image)
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(10, -4, 6.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(12, -4, 3.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(10.5, -5.5, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore(); // Restore horizontal flip so thought bubble text is never mirrored!
+
+            // THOUGHT BUBBLE ABOVE FISH (Exactly like reference image with two small dots + white oval)
+            if (!f.caughtBy) {
+                const bubbleY = -52;
+
+                // Small thought dots
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#64748b';
+                ctx.lineWidth = 2;
+
+                ctx.beginPath();
+                ctx.arc(0, -25, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(0, -34, 5.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Measure text to size the oval bubble dynamically
+                const labelText = `${f.answerText}`;
+                ctx.font = '800 13px "Nunito", sans-serif';
+                const textWidth = ctx.measureText(labelText).width;
+                const rx = Math.max(36, Math.min(95, textWidth / 2 + 14));
+                const ry = 19;
+
+                // White Oval Bubble
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#64748b';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.ellipse(0, bubbleY, rx, ry, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Answer Text inside Bubble (without A, B, C, D)
+                ctx.fillStyle = '#0f172a';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // Truncate slightly if extremely long
+                let displayStr = labelText;
+                if (displayStr.length > 22) {
+                    displayStr = displayStr.substring(0, 20) + '..';
+                }
+                ctx.fillText(displayStr, 0, bubbleY + 1);
+            }
+
+            ctx.restore();
+        }
+
+        /**************************************************************
+         * 10. CONTROLS: ON-SCREEN TRANSPARENT D-PAD & KEYBOARD
+         **************************************************************/
+        function bindDpadButton(btnId, playerKey, dirKey) {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+
+            const setPress = (pressed, e) => {
+                if (e && e.cancelable) e.preventDefault();
+                inputState[playerKey][dirKey] = pressed;
+                if (pressed) {
+                    btn.classList.add('active-press');
+                } else {
+                    btn.classList.remove('active-press');
+                }
+            };
+
+            // Touch Events
+            btn.addEventListener('touchstart', (e) => setPress(true, e), { passive: false });
+            btn.addEventListener('touchend', (e) => setPress(false, e), { passive: false });
+            btn.addEventListener('touchcancel', (e) => setPress(false, e), { passive: false });
+
+            // Mouse Events
+            btn.addEventListener('mousedown', (e) => setPress(true, e));
+            btn.addEventListener('mouseup', (e) => setPress(false, e));
+            btn.addEventListener('mouseleave', (e) => setPress(false, e));
+        }
+
+        // Bind Player 1 D-Pad
+        bindDpadButton('btnP1Left', 'p1', 'left');
+        bindDpadButton('btnP1Down', 'p1', 'down');
+        bindDpadButton('btnP1Right', 'p1', 'right');
+
+        // Bind Player 2 D-Pad
+        bindDpadButton('btnP2Left', 'p2', 'left');
+        bindDpadButton('btnP2Down', 'p2', 'down');
+        bindDpadButton('btnP2Right', 'p2', 'right');
+
+        // Keyboard Listeners (Supports 1P with either WASD or Arrows, and 2P with WASD + Arrows)
+        window.addEventListener('keydown', (e) => {
+            if (gameState !== 'PLAYING') return;
+            const code = e.code;
+
+            if (numPlayers === 1) {
+                if (code === 'KeyA' || code === 'ArrowLeft') {
+                    inputState.p1.left = true;
+                    document.getElementById('btnP1Left').classList.add('active-press');
+                }
+                if (code === 'KeyD' || code === 'ArrowRight') {
+                    inputState.p1.right = true;
+                    document.getElementById('btnP1Right').classList.add('active-press');
+                }
+                if (code === 'KeyS' || code === 'ArrowDown' || code === 'Space') {
+                    inputState.p1.down = true;
+                    document.getElementById('btnP1Down').classList.add('active-press');
+                }
+            } else {
+                // Player 1: A, S, D
+                if (code === 'KeyA') {
+                    inputState.p1.left = true;
+                    document.getElementById('btnP1Left').classList.add('active-press');
+                }
+                if (code === 'KeyD') {
+                    inputState.p1.right = true;
+                    document.getElementById('btnP1Right').classList.add('active-press');
+                }
+                if (code === 'KeyS') {
+                    inputState.p1.down = true;
+                    document.getElementById('btnP1Down').classList.add('active-press');
+                }
+                // Player 2: Arrow Keys
+                if (code === 'ArrowLeft') {
+                    inputState.p2.left = true;
+                    document.getElementById('btnP2Left').classList.add('active-press');
+                }
+                if (code === 'ArrowRight') {
+                    inputState.p2.right = true;
+                    document.getElementById('btnP2Right').classList.add('active-press');
+                }
+                if (code === 'ArrowDown') {
+                    inputState.p2.down = true;
+                    document.getElementById('btnP2Down').classList.add('active-press');
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const code = e.code;
+
+            if (numPlayers === 1) {
+                if (code === 'KeyA' || code === 'ArrowLeft') {
+                    inputState.p1.left = false;
+                    document.getElementById('btnP1Left').classList.remove('active-press');
+                }
+                if (code === 'KeyD' || code === 'ArrowRight') {
+                    inputState.p1.right = false;
+                    document.getElementById('btnP1Right').classList.remove('active-press');
+                }
+                if (code === 'KeyS' || code === 'ArrowDown' || code === 'Space') {
+                    inputState.p1.down = false;
+                    document.getElementById('btnP1Down').classList.remove('active-press');
+                }
+            } else {
+                if (code === 'KeyA') {
+                    inputState.p1.left = false;
+                    document.getElementById('btnP1Left').classList.remove('active-press');
+                }
+                if (code === 'KeyD') {
+                    inputState.p1.right = false;
+                    document.getElementById('btnP1Right').classList.remove('active-press');
+                }
+                if (code === 'KeyS') {
+                    inputState.p1.down = false;
+                    document.getElementById('btnP1Down').classList.remove('active-press');
+                }
+                if (code === 'ArrowLeft') {
+                    inputState.p2.left = false;
+                    document.getElementById('btnP2Left').classList.remove('active-press');
+                }
+                if (code === 'ArrowRight') {
+                    inputState.p2.right = false;
+                    document.getElementById('btnP2Right').classList.remove('active-press');
+                }
+                if (code === 'ArrowDown') {
+                    inputState.p2.down = false;
+                    document.getElementById('btnP2Down').classList.remove('active-press');
+                }
+            }
+        });
+
+        /**************************************************************
+         * 11. UI BUTTON EVENT LISTENERS & MAIN ANIMATION LOOP
+         **************************************************************/
+        document.getElementById('btnStart1P').addEventListener('click', () => startGame(1));
+        document.getElementById('btnStart2P').addEventListener('click', () => startGame(2));
+
+        document.getElementById('btnPlayAgain').addEventListener('click', () => startGame(numPlayers));
+
+        document.getElementById('btnToMenu').addEventListener('click', () => {
+            sound.playPop();
+            gameState = 'MENU';
+            const gameOverModal = document.getElementById('gameOverModal');
+            gameOverModal.classList.add('hidden');
+            gameOverModal.style.display = '';
+            document.getElementById('hudOverlay').classList.add('hidden');
+            document.getElementById('dpadContainer').classList.add('hidden');
+            document.getElementById('menuModal').classList.remove('hidden');
+        });
+
+        document.getElementById('btnBackMenu').addEventListener('click', () => {
+            sound.playPop();
+            gameState = 'MENU';
+            const gameOverModal = document.getElementById('gameOverModal');
+            gameOverModal.classList.add('hidden');
+            gameOverModal.style.display = '';
+            document.getElementById('hudOverlay').classList.add('hidden');
+            document.getElementById('dpadContainer').classList.add('hidden');
+            document.getElementById('menuModal').classList.remove('hidden');
+        });
+
+        document.getElementById('btnToggleSound').addEventListener('click', () => {
+            sound.enabled = !sound.enabled;
+            document.getElementById('soundIcon').textContent = sound.enabled ? '🔊' : '🔇';
+        });
+
+        // Fullscreen Toggle Functionality
+        function toggleFullscreen() {
+            sound.playPop();
+            const docEl = document.documentElement;
+            const isFs = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+
+            if (!isFs) {
+                if (docEl.requestFullscreen) {
+                    docEl.requestFullscreen().catch(() => {});
+                } else if (docEl.webkitRequestFullscreen) {
+                    docEl.webkitRequestFullscreen();
+                } else if (docEl.msRequestFullscreen) {
+                    docEl.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+
+        function updateFullscreenUI() {
+            const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+            const iconExpand = document.getElementById('iconFsExpand');
+            const iconCompress = document.getElementById('iconFsCompress');
+            const menuFsText = document.getElementById('menuFsText');
+
+            if (isFs) {
+                iconExpand.classList.add('hidden');
+                iconCompress.classList.remove('hidden');
+                if (menuFsText) menuFsText.textContent = 'Keluar Fullscreen';
+            } else {
+                iconExpand.classList.remove('hidden');
+                iconCompress.classList.add('hidden');
+                if (menuFsText) menuFsText.textContent = 'Fullscreen';
+            }
+            // Recalculate canvas dimensions smoothly
+            setTimeout(initEnvironment, 100);
+        }
+
+        document.getElementById('btnToggleFullscreen').addEventListener('click', toggleFullscreen);
+        document.getElementById('btnMenuFullscreen').addEventListener('click', toggleFullscreen);
+        document.addEventListener('fullscreenchange', updateFullscreenUI);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
+
+        function gameLoop() {
+            updateGame();
+            drawScene();
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = function () {
+            initEnvironment();
+            createPlayers(1);
+            prepareQuestions();
+            currentQuestion = questionList[0];
+            spawnFishesForQuestion();
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
